@@ -110,14 +110,13 @@ class RendererDxf(RendererBase):
                 # we have a face color so we draw a filled polygon,
                 # in DXF this means a HATCH entity
                 hatch = self.modelspace.add_hatch(dxfcolor)
-                with hatch.edit_boundary() as editor:
-                    editor.add_polyline_path(vertices)
+                hatch.paths.add_polyline_path(vertices)
             else:
                 # A non-filled polygon or a line - use LWPOLYLINE entity
                 attrs = {
                     'color': dxfcolor,
                 }
-                self.modelspace.add_lwpolyline(vertices, attrs)
+                self.modelspace.add_lwpolyline(vertices, dxfattribs=attrs)
 
 
     def draw_image(self, gc, x, y, im):

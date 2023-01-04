@@ -60,7 +60,7 @@ setup(
     ],
 
     install_requires=[
-        "ezdxf>0.6.5",
+        "ezdxf>1.0.0",
         "matplotlib",
     ],
     dependency_links=[
