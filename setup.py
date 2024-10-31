@@ -27,8 +27,8 @@ from setuptools import setup
 import versioneer
 
 
-AUTHOR_NAME = 'David Kent'
-AUTHOR_EMAIL = 'davidkent@fastmail.com.au'
+AUTHOR_NAME = "Jon-Michael Josefsen"
+AUTHOR_EMAIL = "jmj@ngi.no"
 
 
 def read(fname):
@@ -40,30 +40,29 @@ def read(fname):
 
 
 setup(
-    name='mpldxf',
+    name="mpldxf-NGI",
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
-    description='A matplotlib backend to write DXF drawings.',
+    description="A fork of mpldxf - a matplotlib backend to write DXF drawings. Modified by NGI to handle geotechnical plots",
     author=AUTHOR_NAME,
-    url='https://github.com/dmkent/mpldxf',
-    download_url='https://github.com/dmkent/mpldxf',
+    url="https://github.com/dmkent/mpldxf",
+    download_url="https://github.com/dmkent/mpldxf",
     author_email=AUTHOR_EMAIL,
-    packages=['mpldxf'],
-    provides=['mpldxf'],
-    keywords=['matplotlib', 'DXF', 'CAD'],
-    long_description=read('README.rst'),
+    packages=["mpldxf"],
+    provides=["mpldxf"],
+    keywords=["matplotlib", "DXF", "CAD"],
+    long_description=read("README.rst"),
     platforms="OS Independent",
     license="MIT License",
     classifiers=[
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-
     install_requires=[
         "ezdxf>1.0.0",
         "matplotlib",
     ],
     dependency_links=[
-        'hg+https://bitbucket.org/mozman/ezdxf@default#egg=ezdxf-0.7.0alpha',
+        "hg+https://bitbucket.org/mozman/ezdxf@default#egg=ezdxf-0.7.0alpha",
     ],
 )
