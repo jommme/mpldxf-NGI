@@ -44,7 +44,6 @@ class DxfBackendTestCase(unittest.TestCase):
         plt.axis("off")
 
         outfile = "tests/files/test_plot_line_with_no_axis.dxf"
-        plt.savefig(outfile, transparent=True)
         plt.close()
 
         # Load the DXF file and inspect its content
