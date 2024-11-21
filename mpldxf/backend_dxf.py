@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
 from __future__ import absolute_import, division, print_function, unicode_literals
+from io import BytesIO, StringIO
 import os
 import sys
 import math
@@ -519,12 +520,17 @@ class FigureCanvasDxf(FigureCanvasBase):
     filetypes = FigureCanvasBase.filetypes.copy()
     filetypes["dxf"] = "DXF"
 
-    def print_dxf(self, filename, *args, **kwargs):
+    def print_dxf(self, filename=None, *args, **kwargs):
         """
         Write out a DXF file.
         """
         drawing = self.draw()
-        drawing.saveas(filename)
+        # Check if filename is a BytesIO instance
+        if isinstance(filename, StringIO):
+            # ezdxf can only write to a string or a file (not BytesIO directly)
+            drawing.write(filename)
+        else:
+            drawing.saveas(filename)  # Use saveas() for file paths
 
     def get_default_filetype(self):
         return "dxf"
