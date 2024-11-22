@@ -182,9 +182,12 @@ class RendererDxf(RendererBase):
 
         else:
             if isinstance(vertices[0][0], float or np.float64):
-                entity = self.modelspace.add_lwpolyline(
-                    points=vertices, close=False, dxfattribs=dxfattribs
-                )  # set close to false because it broke some arrows
+                if vertices[0][0] != 0:
+                    entity = self.modelspace.add_lwpolyline(
+                        points=vertices, close=False, dxfattribs=dxfattribs
+                    )  # set close to false because it broke some arrows
+                else:
+                    entity = None
 
             else:
                 entity = [
