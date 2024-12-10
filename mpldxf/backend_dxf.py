@@ -35,25 +35,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
 from __future__ import absolute_import, division, print_function, unicode_literals
-
-import math
+from io import BytesIO, StringIO
 import os
-import re
 import sys
-from io import StringIO
+import math
+import re
 
-import ezdxf
-import numpy as np
-from ezdxf.enums import TextEntityAlignment
-from ezdxf.math.clipping import ClippingRect2d
+import matplotlib
 from matplotlib.backend_bases import (
-    FigureCanvasBase,
-    FigureManagerBase,
-    GraphicsContextBase,
     RendererBase,
+    FigureCanvasBase,
+    GraphicsContextBase,
+    FigureManagerBase,
 )
 from matplotlib.transforms import Affine2D
+import matplotlib.transforms as transforms
+import matplotlib.collections as mplc
+import numpy as np
 from shapely.geometry import LineString, Polygon
+import ezdxf
+from ezdxf.enums import TextEntityAlignment
+from ezdxf.math.clipping import Clipping, ClippingRect2d, ConvexClippingPolygon2d
 
 from . import dxf_colors
 
@@ -155,7 +157,7 @@ class RendererDxf(RendererBase):
                 # Check if intersection is a multi-part geometry
                 if intersection.is_empty:
                     vertices = []  # No intersection
-                if (
+                elif (
                     "Multi" in intersection.geom_type
                     or "GeometryCollection" in intersection.geom_type
                 ):
@@ -214,8 +216,6 @@ class RendererDxf(RendererBase):
         """Draw a matplotlib patch object"""
 
         poly = self._draw_mpl_lwpoly(gc, path, transform, obj="patch")
-        if math.isclose(path.vertices[0][1], 421.2598):
-            pass
         if not poly:
             return
         # check to see if the patch is filled
@@ -318,35 +318,6 @@ class RendererDxf(RendererBase):
                                 hatch = self.modelspace.add_hatch(color=dxfcolor)
                                 line = hatch.paths.add_polyline_path(clipped)
 
-    """
-    def draw_path_collection(
-        self,
-        gc,
-        master_transform,
-        paths,
-        all_transforms,
-        offsets,
-        offsetTrans,
-        facecolors,
-        edgecolors,
-        linewidths,
-        linestyles,
-        antialiaseds,
-        urls,
-        offset_position,
-    ):
-        if self._groupd[-1] == "PolyCollection":
-            # Handles PolyCollection as a collection of 'patch'-objects
-            for path in paths:
-                # combines master_transform with path_transform for each path
-                combined_transform = master_transform
-                if facecolors.size:
-                    rgbFace = facecolors[0] if facecolors is not None else None
-                else:
-                    rgbFace = None
-                self._draw_mpl_patch(gc, path, combined_transform, rgbFace)
-    """
-
     def draw_path_collection(
         self,
         gc,
@@ -390,7 +361,6 @@ class RendererDxf(RendererBase):
         elif self._groupd[-1] == "line2d":
             line = self._draw_mpl_line2d(gc, path, transform)
 
-    # Note if this is used then tick marks and lines with markers go through this function
     def draw_markers(self, gc, marker_path, marker_trans, path, trans, rgbFace=None):
         # print('\nEntered ###DRAW_MARKERS###')
         # print('\t', self._groupd)
