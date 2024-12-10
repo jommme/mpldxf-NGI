@@ -35,27 +35,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
 from __future__ import absolute_import, division, print_function, unicode_literals
-from io import BytesIO, StringIO
-import os
-import sys
-import math
-import re
 
-import matplotlib
+import math
+import os
+import re
+import sys
+from io import StringIO
+
+import ezdxf
+import numpy as np
+from ezdxf.enums import TextEntityAlignment
+from ezdxf.math.clipping import ClippingRect2d
 from matplotlib.backend_bases import (
-    RendererBase,
     FigureCanvasBase,
-    GraphicsContextBase,
     FigureManagerBase,
+    GraphicsContextBase,
+    RendererBase,
 )
 from matplotlib.transforms import Affine2D
-import matplotlib.transforms as transforms
-import matplotlib.collections as mplc
-import numpy as np
 from shapely.geometry import LineString, Polygon
-import ezdxf
-from ezdxf.enums import TextEntityAlignment
-from ezdxf.math.clipping import Clipping, ClippingRect2d, ConvexClippingPolygon2d
 
 from . import dxf_colors
 
@@ -140,13 +138,24 @@ class RendererDxf(RendererBase):
                 line = LineString(vertices)
                 try:
                     intersection = line.intersection(cliprect)
-                except:
-                    intersection = Polygon()
+                except Exception:
+                    # Fix plotted values with large gaps/jumps crashing the intersection function
+                    gap_threshold = 50
+                    smoothed_vertices = [vertices[0]]  # Start with the first point
+                    for i in range(1, len(vertices)):
+                        if (
+                            abs(vertices[i][0] - vertices[i - 1][0]) <= gap_threshold
+                            and abs(vertices[i][1] - vertices[i - 1][1])
+                            <= gap_threshold
+                        ):
+                            smoothed_vertices.append(vertices[i])
+                    line = LineString(smoothed_vertices)
+                    intersection = line.intersection(cliprect)
 
                 # Check if intersection is a multi-part geometry
                 if intersection.is_empty:
                     vertices = []  # No intersection
-                elif (
+                if (
                     "Multi" in intersection.geom_type
                     or "GeometryCollection" in intersection.geom_type
                 ):
@@ -205,6 +214,8 @@ class RendererDxf(RendererBase):
         """Draw a matplotlib patch object"""
 
         poly = self._draw_mpl_lwpoly(gc, path, transform, obj="patch")
+        if math.isclose(path.vertices[0][1], 421.2598):
+            pass
         if not poly:
             return
         # check to see if the patch is filled
@@ -307,6 +318,7 @@ class RendererDxf(RendererBase):
                                 hatch = self.modelspace.add_hatch(color=dxfcolor)
                                 line = hatch.paths.add_polyline_path(clipped)
 
+    """
     def draw_path_collection(
         self,
         gc,
@@ -324,16 +336,42 @@ class RendererDxf(RendererBase):
         offset_position,
     ):
         if self._groupd[-1] == "PolyCollection":
-            # Behandle PolyCollection som en samling av 'patch'-objekter
+            # Handles PolyCollection as a collection of 'patch'-objects
             for path in paths:
-                # Kombiner master_transform med path_transform for hver path
+                # combines master_transform with path_transform for each path
                 combined_transform = master_transform
-                # Her kan du velge å bruke eller tilpasse rgbFace basert på facecolors, hvis det er relevant
                 if facecolors.size:
                     rgbFace = facecolors[0] if facecolors is not None else None
                 else:
                     rgbFace = None
                 self._draw_mpl_patch(gc, path, combined_transform, rgbFace)
+    """
+
+    def draw_path_collection(
+        self,
+        gc,
+        master_transform,
+        paths,
+        all_transforms,
+        offsets,
+        offsetTrans,
+        facecolors,
+        edgecolors,
+        linewidths,
+        linestyles,
+        antialiaseds,
+        urls,
+        offset_position,
+    ):
+        for i, path in enumerate(paths):
+            if all_transforms:
+                combined_transform = master_transform + all_transforms[i]
+            else:
+                combined_transform = master_transform
+            facecolor = facecolors[i] if i < len(facecolors) else None
+            edgecolor = edgecolors[i] if i < len(edgecolors) else None
+            # Draw each path as a filled patch
+            self._draw_mpl_patch(gc, path, combined_transform, rgbFace=facecolor)
 
     def draw_path(self, gc, path, transform, rgbFace=None):
         # print('\nEntered ###DRAW_PATH###')
@@ -478,6 +516,21 @@ class RendererDxf(RendererBase):
 
     def points_to_pixels(self, points):
         return points / 72.0 * self.dpi
+
+    def draw_quad_mesh(
+        self,
+        gc,
+        master_transform,
+        meshWidth,
+        meshHeight,
+        coordinates,
+        offsets,
+        offsetTrans,
+        facecolors,
+        antialiased,
+        edgecolors,
+    ):
+        pass
 
 
 class FigureCanvasDxf(FigureCanvasBase):
