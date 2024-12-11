@@ -35,27 +35,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
 from __future__ import absolute_import, division, print_function, unicode_literals
-from io import BytesIO, StringIO
-import os
-import sys
-import math
-import re
 
-import matplotlib
+import math
+import os
+import re
+import sys
+from io import StringIO
+
+import ezdxf
+import numpy as np
+from ezdxf.enums import TextEntityAlignment
+from ezdxf.math.clipping import ClippingRect2d
 from matplotlib.backend_bases import (
-    RendererBase,
     FigureCanvasBase,
-    GraphicsContextBase,
     FigureManagerBase,
+    GraphicsContextBase,
+    RendererBase,
 )
 from matplotlib.transforms import Affine2D
-import matplotlib.transforms as transforms
-import matplotlib.collections as mplc
-import numpy as np
 from shapely.geometry import LineString, Polygon
-import ezdxf
-from ezdxf.enums import TextEntityAlignment
-from ezdxf.math.clipping import Clipping, ClippingRect2d, ConvexClippingPolygon2d
 
 from . import dxf_colors
 
@@ -192,11 +190,7 @@ class RendererDxf(RendererBase):
             else:
                 vertices = [self._clip_mpl(gc, points, obj=obj) for points in vertices]
 
-            # if vertices.
-            if len(vertices) == 0:
-                entity = None
-
-            else:
+            if len(vertices) > 0:
                 if isinstance(vertices[0][0], float or np.float64):
                     if vertices[0][0] != 0:
                         entity = self.modelspace.add_lwpolyline(
@@ -212,7 +206,12 @@ class RendererDxf(RendererBase):
                         )
                         for points in vertices
                     ]  # set close to false because it broke some arrows
-            return entity
+            else:
+                entity = None
+        else:
+            entity = None
+
+        return entity
 
     def _draw_mpl_line2d(self, gc, path, transform):
         line = self._draw_mpl_lwpoly(gc, path, transform, obj="line2d")
@@ -491,21 +490,6 @@ class RendererDxf(RendererBase):
 
     def points_to_pixels(self, points):
         return points / 72.0 * self.dpi
-
-    def draw_quad_mesh(
-        self,
-        gc,
-        master_transform,
-        meshWidth,
-        meshHeight,
-        coordinates,
-        offsets,
-        offsetTrans,
-        facecolors,
-        antialiased,
-        edgecolors,
-    ):
-        pass
 
 
 class FigureCanvasDxf(FigureCanvasBase):
