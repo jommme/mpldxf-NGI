@@ -131,6 +131,9 @@ class RendererDxf(RendererBase):
                 [bbox.x0, bbox.y1],
             ]
 
+            # Remove any NaN values from the vertices
+            vertices = vertices[~np.isnan(vertices).any(axis=1)]
+
             if obj == "patch":
                 vertices = ClippingRect2d(cliprect[0], cliprect[2]).clip_polyline(
                     vertices
@@ -138,24 +141,10 @@ class RendererDxf(RendererBase):
             elif obj == "line2d":
                 cliprect = Polygon(cliprect)
                 line = LineString(vertices)
-                try:
-                    intersection = line.intersection(cliprect)
-                except Exception:
-                    # Fix plotted values with large gaps/jumps crashing the intersection function
-                    gap_threshold = 50
-                    smoothed_vertices = [vertices[0]]  # Start with the first point
-                    for i in range(1, len(vertices)):
-                        if (
-                            abs(vertices[i][0] - vertices[i - 1][0]) <= gap_threshold
-                            and abs(vertices[i][1] - vertices[i - 1][1])
-                            <= gap_threshold
-                        ):
-                            smoothed_vertices.append(vertices[i])
-                    line = LineString(smoothed_vertices)
-                    intersection = line.intersection(cliprect)
+                intersection = line.intersection(cliprect)
 
-                # Check if intersection is a multi-part geometry
                 if intersection.is_empty:
+                    # if intersection is empty, return empty list of vertices
                     vertices = []  # No intersection
                 elif (
                     "Multi" in intersection.geom_type
@@ -180,33 +169,33 @@ class RendererDxf(RendererBase):
         vertices = path.transformed(transform).vertices
 
         # clip the polygon if clip rectangle present
-
-        if isinstance(vertices[0][0], float or np.float64):
-            vertices = self._clip_mpl(gc, vertices, obj=obj)
-
-        else:
-            vertices = [self._clip_mpl(gc, points, obj=obj) for points in vertices]
-
-        # if vertices.
-        if len(vertices) == 0:
-            entity = None
-
-        else:
+        if len(vertices) > 0:
             if isinstance(vertices[0][0], float or np.float64):
-                if vertices[0][0] != 0:
-                    entity = self.modelspace.add_lwpolyline(
-                        points=vertices, close=False, dxfattribs=dxfattribs
-                    )  # set close to false because it broke some arrows
-                else:
-                    entity = None
+                vertices = self._clip_mpl(gc, vertices, obj=obj)
 
             else:
-                entity = [
-                    self.modelspace.add_lwpolyline(
-                        points=points, close=False, dxfattribs=dxfattribs
-                    )
-                    for points in vertices
-                ]  # set close to false because it broke some arrows
+                vertices = [self._clip_mpl(gc, points, obj=obj) for points in vertices]
+
+            # if vertices.
+            if len(vertices) == 0:
+                entity = None
+
+            else:
+                if isinstance(vertices[0][0], float or np.float64):
+                    if vertices[0][0] != 0:
+                        entity = self.modelspace.add_lwpolyline(
+                            points=vertices, close=False, dxfattribs=dxfattribs
+                        )  # set close to false because it broke some arrows
+                    else:
+                        entity = None
+
+                else:
+                    entity = [
+                        self.modelspace.add_lwpolyline(
+                            points=points, close=False, dxfattribs=dxfattribs
+                        )
+                        for points in vertices
+                    ]  # set close to false because it broke some arrows
             return entity
 
     def _draw_mpl_line2d(self, gc, path, transform):
@@ -335,7 +324,7 @@ class RendererDxf(RendererBase):
         offset_position,
     ):
         for i, path in enumerate(paths):
-            if all_transforms:
+            if len(all_transforms):
                 combined_transform = master_transform + all_transforms[i]
             else:
                 combined_transform = master_transform
