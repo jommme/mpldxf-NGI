@@ -131,9 +131,6 @@ class RendererDxf(RendererBase):
                 [bbox.x0, bbox.y1],
             ]
 
-            # Remove any NaN values from the vertices
-            vertices = vertices[~np.isnan(vertices).any(axis=1)]
-
             if obj == "patch":
                 vertices = ClippingRect2d(cliprect[0], cliprect[2]).clip_polyline(
                     vertices
@@ -168,6 +165,25 @@ class RendererDxf(RendererBase):
         dxfattribs = self._get_polyline_attribs(gc)
         vertices = path.transformed(transform).vertices
 
+        # Check if vertices hold NaN values
+        if np.isnan(vertices).any():
+            nan_rows = np.isnan(vertices).all(axis=1)
+            split_indices = np.where(nan_rows)[0]
+
+            # Split the array at NaN indices
+            list_of_split_vertices = np.split(vertices, split_indices)
+
+            # Remove NaN values from sub-arrays
+            list_of_split_vertices = [
+                arr[~np.isnan(arr).any(axis=1)] for arr in list_of_split_vertices
+            ]
+
+            for split_vertices in list_of_split_vertices:
+                self._clip_and_add_mpl_lwpoly(gc, dxfattribs, split_vertices, obj)
+        else:
+            self._clip_and_add_mpl_lwpoly(gc, dxfattribs, vertices, obj)
+
+    def _clip_and_add_mpl_lwpoly(self, gc, dxfattribs, vertices, obj):
         # clip the polygon if clip rectangle present
         if len(vertices) > 0:
             if isinstance(vertices[0][0], float or np.float64):

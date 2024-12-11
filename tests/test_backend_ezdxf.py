@@ -56,7 +56,7 @@ class TestDxfBackendCase(unittest.TestCase):
         modelspace = doc.modelspace()
         entities = list(modelspace)
         assert len(entities) == 1  # 1 line and the bounding box of the plot
-        
+
     def test_plot_line(self):
         """Test a simple line-plot command."""
         plt.gca().patch.set_visible(False)
@@ -163,7 +163,7 @@ class TestDxfBackendCase(unittest.TestCase):
         X, Y = np.meshgrid(x, y)
         Z = np.sin(np.sqrt(X**2 + Y**2))
         plt.contourf(X, Y, Z)
-        
+
         plt.savefig("tests/files/test_contourf.png")
 
         try:
@@ -172,7 +172,7 @@ class TestDxfBackendCase(unittest.TestCase):
 
         finally:
             plt.close()
-      
+
     def test_plot_with_nans(self):
         """Test a plot with NaNs."""
         plt.gca().patch.set_visible(False)
@@ -194,5 +194,5 @@ class TestDxfBackendCase(unittest.TestCase):
         modelspace = doc.modelspace()
         entities = list(modelspace)
         assert (
-            len(entities) == 1
+            len(entities) == 2
         )  # ideally we should have two lines (i.e. one broken line), but one interpolated line works as a hotfix
