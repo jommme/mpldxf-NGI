@@ -55,8 +55,8 @@ class TestDxfBackendCase(unittest.TestCase):
         doc = ezdxf.readfile(outfile)
         modelspace = doc.modelspace()
         entities = list(modelspace)
-        assert len(entities) == 1  # 1 line
-
+        assert len(entities) == 1  # 1 line and the bounding box of the plot
+        
     def test_plot_line(self):
         """Test a simple line-plot command."""
         plt.gca().patch.set_visible(False)
@@ -163,6 +163,7 @@ class TestDxfBackendCase(unittest.TestCase):
         X, Y = np.meshgrid(x, y)
         Z = np.sin(np.sqrt(X**2 + Y**2))
         plt.contourf(X, Y, Z)
+        
         plt.savefig("tests/files/test_contourf.png")
 
         try:
@@ -171,3 +172,27 @@ class TestDxfBackendCase(unittest.TestCase):
 
         finally:
             plt.close()
+      
+    def test_plot_with_nans(self):
+        """Test a plot with NaNs."""
+        plt.gca().patch.set_visible(False)
+        x = [1, 2, 3, 4, 5, 6]
+        y = [1, 2, 3, np.nan, 5, 6]
+        plt.plot(x, y)
+        plt.axis("off")
+
+        plt.savefig("tests/files/test_plot_with_nans.png")
+
+        try:
+            outfile = "tests/files/test_plot_with_nans.dxf"
+            plt.savefig(outfile)
+        finally:
+            plt.close()
+
+        # Load the DXF file and inspect its content
+        doc = ezdxf.readfile(outfile)
+        modelspace = doc.modelspace()
+        entities = list(modelspace)
+        assert (
+            len(entities) == 1
+        )  # ideally we should have two lines (i.e. one broken line), but one interpolated line works as a hotfix
