@@ -50,7 +50,7 @@ class DxfBackendTestCase(unittest.TestCase):
         doc = ezdxf.readfile(outfile)
         modelspace = doc.modelspace()
         entities = list(modelspace)
-        assert len(entities) == 2  # 1 line and the bounding box of the plot
+        assert len(entities) == 1  # 1 line and the bounding box of the plot
 
     def test_plot_line(self):
         """Test a simple line-plot command."""
@@ -101,3 +101,27 @@ class DxfBackendTestCase(unittest.TestCase):
         outfile = "tests/files/test_contourf.dxf"
         plt.savefig(outfile)
         plt.close()
+
+    def test_plot_with_nans(self):
+        """Test a plot with NaNs."""
+        plt.gca().patch.set_visible(False)
+        x = [1, 2, 3, 4, 5, 6]
+        y = [1, 2, 3, np.nan, 5, 6]
+        plt.plot(x, y)
+        plt.axis("off")
+
+        plt.savefig("tests/files/test_plot_with_nans.png")
+
+        try:
+            outfile = "tests/files/test_plot_with_nans.dxf"
+            plt.savefig(outfile)
+        finally:
+            plt.close()
+
+        # Load the DXF file and inspect its content
+        doc = ezdxf.readfile(outfile)
+        modelspace = doc.modelspace()
+        entities = list(modelspace)
+        assert (
+            len(entities) == 1
+        )  # ideally we should have two lines (i.e. one broken line), but one interpolated line works as a hotfix
