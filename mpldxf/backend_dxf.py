@@ -35,27 +35,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
 from __future__ import absolute_import, division, print_function, unicode_literals
-from io import BytesIO, StringIO
-import os
-import sys
-import math
-import re
 
-import matplotlib
+import math
+import os
+import re
+import sys
+from io import StringIO
+
+import ezdxf
+import numpy as np
+from ezdxf.enums import TextEntityAlignment
+from ezdxf.math.clipping import ClippingRect2d
 from matplotlib.backend_bases import (
-    RendererBase,
     FigureCanvasBase,
-    GraphicsContextBase,
     FigureManagerBase,
+    GraphicsContextBase,
+    RendererBase,
 )
 from matplotlib.transforms import Affine2D
-import matplotlib.transforms as transforms
-import matplotlib.collections as mplc
-import numpy as np
 from shapely.geometry import LineString, Polygon
-import ezdxf
-from ezdxf.enums import TextEntityAlignment
-from ezdxf.math.clipping import Clipping, ClippingRect2d, ConvexClippingPolygon2d
 
 from . import dxf_colors
 
@@ -138,12 +136,8 @@ class RendererDxf(RendererBase):
             elif obj == "line2d":
                 cliprect = Polygon(cliprect)
                 line = LineString(vertices)
-                try:
-                    intersection = line.intersection(cliprect)
-                except:
-                    intersection = Polygon()
+                intersection = line.intersection(cliprect)
 
-                # Check if intersection is a multi-part geometry
                 if intersection.is_empty:
                     vertices = []  # No intersection
                 elif (
@@ -168,35 +162,86 @@ class RendererDxf(RendererBase):
         dxfattribs = self._get_polyline_attribs(gc)
         vertices = path.transformed(transform).vertices
 
-        # clip the polygon if clip rectangle present
+        # Check if vertices hold NaN values
 
-        if isinstance(vertices[0][0], float or np.float64):
-            vertices = self._clip_mpl(gc, vertices, obj=obj)
+        if np.isnan(vertices).any():
+            nan_rows = np.isnan(vertices).all(axis=1)
+            split_indices = np.where(nan_rows)[0]
 
+            # Split the array at NaN indices
+            list_of_split_vertices = np.split(vertices, split_indices)
+
+            # Remove NaN values from sub-arrays
+            list_of_split_vertices = [
+                arr[~np.isnan(arr).any(axis=1)] for arr in list_of_split_vertices
+            ]
+
+            for split_vertices in list_of_split_vertices:
+                if split_vertices.size != 0:
+                    # clip the polygon if clip rectangle present
+
+                    if isinstance(split_vertices[0][0], float or np.float64):
+                        split_vertices = self._clip_mpl(gc, split_vertices, obj=obj)
+
+                    else:
+                        split_vertices = [
+                            self._clip_mpl(gc, points, obj=obj)
+                            for points in split_vertices
+                        ]
+
+                    # if vertices.
+                    if len(split_vertices) == 0:
+                        entity = None
+
+                    else:
+                        if isinstance(split_vertices[0][0], float or np.float64):
+                            if split_vertices[0][0] != 0:
+                                entity = self.modelspace.add_lwpolyline(
+                                    points=split_vertices,
+                                    close=False,
+                                    dxfattribs=dxfattribs,
+                                )  # set close to false because it broke some arrows
+                            else:
+                                entity = None
+
+                        else:
+                            entity = [
+                                self.modelspace.add_lwpolyline(
+                                    points=points, close=False, dxfattribs=dxfattribs
+                                )
+                                for points in split_vertices
+                            ]  # set close to false because it broke some arrows
+                        return entity
         else:
-            vertices = [self._clip_mpl(gc, points, obj=obj) for points in vertices]
+            # clip the polygon if clip rectangle present
 
-        # if vertices.
-        if len(vertices) == 0:
-            entity = None
-
-        else:
             if isinstance(vertices[0][0], float or np.float64):
-                if vertices[0][0] != 0:
-                    entity = self.modelspace.add_lwpolyline(
-                        points=vertices, close=False, dxfattribs=dxfattribs
-                    )  # set close to false because it broke some arrows
-                else:
-                    entity = None
+                vertices = self._clip_mpl(gc, vertices, obj=obj)
 
             else:
-                entity = [
-                    self.modelspace.add_lwpolyline(
-                        points=points, close=False, dxfattribs=dxfattribs
-                    )
-                    for points in vertices
-                ]  # set close to false because it broke some arrows
-            return entity
+                vertices = [self._clip_mpl(gc, points, obj=obj) for points in vertices]
+
+            # if vertices.
+            if len(vertices) == 0:
+                entity = None
+
+            else:
+                if isinstance(vertices[0][0], float or np.float64):
+                    if vertices[0][0] != 0:
+                        entity = self.modelspace.add_lwpolyline(
+                            points=vertices, close=False, dxfattribs=dxfattribs
+                        )  # set close to false because it broke some arrows
+                    else:
+                        entity = None
+
+                else:
+                    entity = [
+                        self.modelspace.add_lwpolyline(
+                            points=points, close=False, dxfattribs=dxfattribs
+                        )
+                        for points in vertices
+                    ]  # set close to false because it broke some arrows
+                return entity
 
     def _draw_mpl_line2d(self, gc, path, transform):
         line = self._draw_mpl_lwpoly(gc, path, transform, obj="line2d")
@@ -314,7 +359,7 @@ class RendererDxf(RendererBase):
         paths,
         all_transforms,
         offsets,
-        offsetTrans,
+        offset_trans,
         facecolors,
         edgecolors,
         linewidths,
@@ -323,17 +368,17 @@ class RendererDxf(RendererBase):
         urls,
         offset_position,
     ):
-        if self._groupd[-1] == "PolyCollection":
-            # Behandle PolyCollection som en samling av 'patch'-objekter
-            for path in paths:
-                # Kombiner master_transform med path_transform for hver path
+        for i, path in enumerate(paths):
+            if len(all_transforms):
+                combined_transform = master_transform + all_transforms[i]
+            else:
                 combined_transform = master_transform
-                # Her kan du velge å bruke eller tilpasse rgbFace basert på facecolors, hvis det er relevant
-                if facecolors.size:
-                    rgbFace = facecolors[0] if facecolors is not None else None
-                else:
-                    rgbFace = None
-                self._draw_mpl_patch(gc, path, combined_transform, rgbFace)
+            if facecolors.size:
+                rgbFace = facecolors[0] if facecolors is not None else None
+            else:
+                rgbFace = None
+            # Draw each path as a filled patch
+            self._draw_mpl_patch(gc, path, combined_transform, rgbFace=rgbFace)
 
     def draw_path(self, gc, path, transform, rgbFace=None):
         # print('\nEntered ###DRAW_PATH###')
@@ -352,7 +397,6 @@ class RendererDxf(RendererBase):
         elif self._groupd[-1] == "line2d":
             line = self._draw_mpl_line2d(gc, path, transform)
 
-    # Note if this is used then tick marks and lines with markers go through this function
     def draw_markers(self, gc, marker_path, marker_trans, path, trans, rgbFace=None):
         # print('\nEntered ###DRAW_MARKERS###')
         # print('\t', self._groupd)
