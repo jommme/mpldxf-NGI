@@ -136,6 +136,9 @@ class RendererDxf(RendererBase):
                     vertices
                 )
             elif obj == "line2d":
+                # strip nans
+                vertices = [v for v in vertices if not np.isnan(v).any()]
+
                 cliprect = Polygon(cliprect)
                 line = LineString(vertices)
                 try:
@@ -159,12 +162,6 @@ class RendererDxf(RendererBase):
         return vertices
 
     def _draw_mpl_lwpoly(self, gc, path, transform, obj):
-        # TODO rework for BEZIER curves
-        if obj == "patch":
-            close = True
-        elif obj == "line2d":
-            close = False
-
         dxfattribs = self._get_polyline_attribs(gc)
         vertices = path.transformed(transform).vertices
 
