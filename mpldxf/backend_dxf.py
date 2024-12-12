@@ -311,7 +311,7 @@ class RendererDxf(RendererBase):
         paths,
         all_transforms,
         offsets,
-        offsetTrans,
+        offset_trans,
         facecolors,
         edgecolors,
         linewidths,
@@ -320,17 +320,14 @@ class RendererDxf(RendererBase):
         urls,
         offset_position,
     ):
-        if self._groupd[-1] == "PolyCollection":
-            # Behandle PolyCollection som en samling av 'patch'-objekter
-            for path in paths:
-                # Kombiner master_transform med path_transform for hver path
-                combined_transform = master_transform
-                # Her kan du velge å bruke eller tilpasse rgbFace basert på facecolors, hvis det er relevant
-                if facecolors.size:
-                    rgbFace = facecolors[0] if facecolors is not None else None
-                else:
-                    rgbFace = None
-                self._draw_mpl_patch(gc, path, combined_transform, rgbFace)
+        for path in paths:
+            combined_transform = master_transform
+            if facecolors.size:
+                rgbFace = facecolors[0] if facecolors is not None else None
+            else:
+                rgbFace = None
+            # Draw each path as a filled patch
+            self._draw_mpl_patch(gc, path, combined_transform, rgbFace=rgbFace)
 
     def draw_path(self, gc, path, transform, rgbFace=None):
         # print('\nEntered ###DRAW_PATH###')
