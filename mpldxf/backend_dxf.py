@@ -139,7 +139,6 @@ class RendererDxf(RendererBase):
                 intersection = line.intersection(cliprect)
 
                 if intersection.is_empty:
-                    # if intersection is empty, return empty list of vertices
                     vertices = []  # No intersection
                 elif (
                     "Multi" in intersection.geom_type
@@ -164,6 +163,7 @@ class RendererDxf(RendererBase):
         vertices = path.transformed(transform).vertices
 
         # Check if vertices hold NaN values
+
         if np.isnan(vertices).any():
             nan_rows = np.isnan(vertices).all(axis=1)
             split_indices = np.where(nan_rows)[0]
@@ -177,20 +177,55 @@ class RendererDxf(RendererBase):
             ]
 
             for split_vertices in list_of_split_vertices:
-                self._clip_and_add_mpl_lwpoly(gc, dxfattribs, split_vertices, obj)
-        else:
-            self._clip_and_add_mpl_lwpoly(gc, dxfattribs, vertices, obj)
+                if split_vertices.size != 0:
+                    # clip the polygon if clip rectangle present
 
-    def _clip_and_add_mpl_lwpoly(self, gc, dxfattribs, vertices, obj):
-        # clip the polygon if clip rectangle present
-        if len(vertices) > 0:
+                    if isinstance(split_vertices[0][0], float or np.float64):
+                        split_vertices = self._clip_mpl(gc, split_vertices, obj=obj)
+
+                    else:
+                        split_vertices = [
+                            self._clip_mpl(gc, points, obj=obj)
+                            for points in split_vertices
+                        ]
+
+                    # if vertices.
+                    if len(split_vertices) == 0:
+                        entity = None
+
+                    else:
+                        if isinstance(split_vertices[0][0], float or np.float64):
+                            if split_vertices[0][0] != 0:
+                                entity = self.modelspace.add_lwpolyline(
+                                    points=split_vertices,
+                                    close=False,
+                                    dxfattribs=dxfattribs,
+                                )  # set close to false because it broke some arrows
+                            else:
+                                entity = None
+
+                        else:
+                            entity = [
+                                self.modelspace.add_lwpolyline(
+                                    points=points, close=False, dxfattribs=dxfattribs
+                                )
+                                for points in split_vertices
+                            ]  # set close to false because it broke some arrows
+                        return entity
+        else:
+            # clip the polygon if clip rectangle present
+
             if isinstance(vertices[0][0], float or np.float64):
                 vertices = self._clip_mpl(gc, vertices, obj=obj)
 
             else:
                 vertices = [self._clip_mpl(gc, points, obj=obj) for points in vertices]
 
-            if len(vertices) > 0:
+            # if vertices.
+            if len(vertices) == 0:
+                entity = None
+
+            else:
                 if isinstance(vertices[0][0], float or np.float64):
                     if vertices[0][0] != 0:
                         entity = self.modelspace.add_lwpolyline(
@@ -206,12 +241,7 @@ class RendererDxf(RendererBase):
                         )
                         for points in vertices
                     ]  # set close to false because it broke some arrows
-            else:
-                entity = None
-        else:
-            entity = None
-
-        return entity
+                return entity
 
     def _draw_mpl_line2d(self, gc, path, transform):
         line = self._draw_mpl_lwpoly(gc, path, transform, obj="line2d")
@@ -329,7 +359,7 @@ class RendererDxf(RendererBase):
         paths,
         all_transforms,
         offsets,
-        offsetTrans,
+        offset_trans,
         facecolors,
         edgecolors,
         linewidths,
@@ -343,10 +373,12 @@ class RendererDxf(RendererBase):
                 combined_transform = master_transform + all_transforms[i]
             else:
                 combined_transform = master_transform
-            facecolor = facecolors[i] if i < len(facecolors) else None
-            edgecolor = edgecolors[i] if i < len(edgecolors) else None
+            if facecolors.size:
+                rgbFace = facecolors[0] if facecolors is not None else None
+            else:
+                rgbFace = None
             # Draw each path as a filled patch
-            self._draw_mpl_patch(gc, path, combined_transform, rgbFace=facecolor)
+            self._draw_mpl_patch(gc, path, combined_transform, rgbFace=rgbFace)
 
     def draw_path(self, gc, path, transform, rgbFace=None):
         # print('\nEntered ###DRAW_PATH###')
