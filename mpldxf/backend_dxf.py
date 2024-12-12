@@ -167,32 +167,33 @@ class RendererDxf(RendererBase):
 
         # clip the polygon if clip rectangle present
 
-        if isinstance(vertices[0][0], float or np.float64):
-            vertices = self._clip_mpl(gc, vertices, obj=obj)
-
-        else:
-            vertices = [self._clip_mpl(gc, points, obj=obj) for points in vertices]
-
-        # if vertices.
-        if len(vertices) == 0:
-            entity = None
-
-        else:
+        if len(vertices) > 0:
             if isinstance(vertices[0][0], float or np.float64):
-                if vertices[0][0] != 0:
-                    entity = self.modelspace.add_lwpolyline(
-                        points=vertices, close=False, dxfattribs=dxfattribs
-                    )  # set close to false because it broke some arrows
-                else:
-                    entity = None
+                vertices = self._clip_mpl(gc, vertices, obj=obj)
 
             else:
-                entity = [
-                    self.modelspace.add_lwpolyline(
-                        points=points, close=False, dxfattribs=dxfattribs
-                    )
-                    for points in vertices
-                ]  # set close to false because it broke some arrows
+                vertices = [self._clip_mpl(gc, points, obj=obj) for points in vertices]
+
+            # if vertices.
+            if len(vertices) == 0:
+                entity = None
+
+            else:
+                if isinstance(vertices[0][0], float or np.float64):
+                    if vertices[0][0] != 0:
+                        entity = self.modelspace.add_lwpolyline(
+                            points=vertices, close=False, dxfattribs=dxfattribs
+                        )  # set close to false because it broke some arrows
+                    else:
+                        entity = None
+
+                else:
+                    entity = [
+                        self.modelspace.add_lwpolyline(
+                            points=points, close=False, dxfattribs=dxfattribs
+                        )
+                        for points in vertices
+                    ]  # set close to false because it broke some arrows
             return entity
 
     def _draw_mpl_line2d(self, gc, path, transform):
