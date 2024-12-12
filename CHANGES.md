@@ -1,5 +1,13 @@
 # Changes
 
+## Version 0.6.0
+
+_2024-12-12_
+
+Fix:
+
+- Include support for all path collections
+
 ## Version 0.5.0
 
 _2024-12-12_

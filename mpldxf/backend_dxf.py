@@ -167,32 +167,33 @@ class RendererDxf(RendererBase):
 
         # clip the polygon if clip rectangle present
 
-        if isinstance(vertices[0][0], float or np.float64):
-            vertices = self._clip_mpl(gc, vertices, obj=obj)
-
-        else:
-            vertices = [self._clip_mpl(gc, points, obj=obj) for points in vertices]
-
-        # if vertices.
-        if len(vertices) == 0:
-            entity = None
-
-        else:
+        if len(vertices) > 0:
             if isinstance(vertices[0][0], float or np.float64):
-                if vertices[0][0] != 0:
-                    entity = self.modelspace.add_lwpolyline(
-                        points=vertices, close=False, dxfattribs=dxfattribs
-                    )  # set close to false because it broke some arrows
-                else:
-                    entity = None
+                vertices = self._clip_mpl(gc, vertices, obj=obj)
 
             else:
-                entity = [
-                    self.modelspace.add_lwpolyline(
-                        points=points, close=False, dxfattribs=dxfattribs
-                    )
-                    for points in vertices
-                ]  # set close to false because it broke some arrows
+                vertices = [self._clip_mpl(gc, points, obj=obj) for points in vertices]
+
+            # if vertices.
+            if len(vertices) == 0:
+                entity = None
+
+            else:
+                if isinstance(vertices[0][0], float or np.float64):
+                    if vertices[0][0] != 0:
+                        entity = self.modelspace.add_lwpolyline(
+                            points=vertices, close=False, dxfattribs=dxfattribs
+                        )  # set close to false because it broke some arrows
+                    else:
+                        entity = None
+
+                else:
+                    entity = [
+                        self.modelspace.add_lwpolyline(
+                            points=points, close=False, dxfattribs=dxfattribs
+                        )
+                        for points in vertices
+                    ]  # set close to false because it broke some arrows
             return entity
 
     def _draw_mpl_line2d(self, gc, path, transform):
@@ -311,7 +312,7 @@ class RendererDxf(RendererBase):
         paths,
         all_transforms,
         offsets,
-        offsetTrans,
+        offset_trans,
         facecolors,
         edgecolors,
         linewidths,
@@ -320,17 +321,14 @@ class RendererDxf(RendererBase):
         urls,
         offset_position,
     ):
-        if self._groupd[-1] == "PolyCollection":
-            # Behandle PolyCollection som en samling av 'patch'-objekter
-            for path in paths:
-                # Kombiner master_transform med path_transform for hver path
-                combined_transform = master_transform
-                # Her kan du velge å bruke eller tilpasse rgbFace basert på facecolors, hvis det er relevant
-                if facecolors.size:
-                    rgbFace = facecolors[0] if facecolors is not None else None
-                else:
-                    rgbFace = None
-                self._draw_mpl_patch(gc, path, combined_transform, rgbFace)
+        for path in paths:
+            combined_transform = master_transform
+            if facecolors.size:
+                rgbFace = facecolors[0] if facecolors is not None else None
+            else:
+                rgbFace = None
+            # Draw each path as a filled patch
+            self._draw_mpl_patch(gc, path, combined_transform, rgbFace=rgbFace)
 
     def draw_path(self, gc, path, transform, rgbFace=None):
         # print('\nEntered ###DRAW_PATH###')
