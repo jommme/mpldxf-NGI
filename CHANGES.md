@@ -1,5 +1,13 @@
 # Changes
 
+## Version 0.7.0
+
+_2025-01-08_
+
+Fix:
+
+- Fixed bug for plots with only one data point
+
 ## Version 0.6.0
 
 _2024-12-12_
