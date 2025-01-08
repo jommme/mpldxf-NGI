@@ -52,6 +52,7 @@ from matplotlib.transforms import Affine2D
 import matplotlib.transforms as transforms
 import matplotlib.collections as mplc
 import numpy as np
+from shapely import Point
 from shapely.geometry import LineString, Polygon
 import ezdxf
 from ezdxf.enums import TextEntityAlignment
@@ -140,7 +141,12 @@ class RendererDxf(RendererBase):
                 vertices = [v for v in vertices if not np.isnan(v).any()]
 
                 cliprect = Polygon(cliprect)
-                line = LineString(vertices)
+                if (
+                    len(vertices) == 1
+                ):  # if there is only one data point for the line, create a Point object
+                    line = Point(vertices[0])
+                else:
+                    line = LineString(vertices)
                 try:
                     intersection = line.intersection(cliprect)
                 except:
